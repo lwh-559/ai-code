@@ -1,6 +1,7 @@
 package com.dorr.aicode.model.vo;
 
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serial;
@@ -22,6 +23,7 @@ public class LoginUserVO implements Serializable {
     /**
      * 用户 id
      */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     /**

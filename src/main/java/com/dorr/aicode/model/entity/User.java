@@ -1,5 +1,6 @@
 package com.dorr.aicode.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
@@ -34,6 +35,7 @@ public class User implements Serializable {
      * id
      */
     @Id(keyType = KeyType.Generator, value = KeyGenerators.snowFlakeId)
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     /**
