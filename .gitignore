@@ -1,5 +1,6 @@
 # customer
 application-local.yaml
+tmp/
 
 target/
 .mvn/wrapper/maven-wrapper.jar
