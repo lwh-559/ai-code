@@ -1,4 +1,4 @@
-package com.dorr.aicode.model.entity;
+package com.dorr.aicode.model.entity.user;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.mybatisflex.annotation.Column;

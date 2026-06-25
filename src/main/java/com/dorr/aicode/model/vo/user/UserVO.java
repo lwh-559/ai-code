@@ -1,4 +1,4 @@
-package com.dorr.aicode.model.vo;
+package com.dorr.aicode.model.vo.user;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;

@@ -5,13 +5,16 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.dorr.aicode.exception.BusinessException;
 import com.dorr.aicode.exception.ErrorCode;
-import com.dorr.aicode.model.dto.UserQueryRequest;
+import com.dorr.aicode.model.dto.user.UserAddRequest;
+import com.dorr.aicode.model.dto.user.UserQueryRequest;
+import com.dorr.aicode.model.dto.user.UserUpdateRequest;
 import com.dorr.aicode.model.enums.UserRoleEnum;
-import com.dorr.aicode.model.vo.LoginUserVO;
-import com.dorr.aicode.model.vo.UserVO;
+import com.dorr.aicode.model.vo.user.LoginUserVO;
+import com.dorr.aicode.model.vo.user.UserVO;
+import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.dorr.aicode.model.entity.User;
+import com.dorr.aicode.model.entity.user.User;
 import com.dorr.aicode.mapper.UserMapper;
 import com.dorr.aicode.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -70,17 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
         return user.getId();
     }
 
-    /**
-     * 重写父类方法，用于获取加密后的用户密码
-     * @param userPassword 用户输入的原始密码
-     * @return 返回经过MD5加密后的密码字符串
-     */
-    @Override
-    public String getEncryptPassword(String userPassword) {
-        // 盐值，混淆密码
-        final String SALT = "dorr";
-        return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
-    }
+
 
     @Override
     public LoginUserVO getLoginUserVO(User user) {
@@ -159,8 +152,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
         BeanUtil.copyProperties(user, userVO);
         return userVO;
     }
-
-    @Override
+    /**
+     * 获取脱敏后的用户列表
+     * @param userList 用户实体列表
+     * @return 脱敏后数据列表
+     */
     public List<UserVO> getUserVOList(List<User> userList) {
         // 如果用户列表为空，则返回一个空列表
         if (CollUtil.isEmpty(userList)) {
@@ -170,8 +166,81 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
         return userList.stream().map(this::getUserVO).collect(Collectors.toList());
     }
 
+    @Override
+    public boolean updateUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
+        if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = getLoginUser(request);
+        long userId = userUpdateRequest.getId();
+        // 仅本人或管理员可修改
+        if (!loginUser.getId().equals(userId) && !UserRoleEnum.ADMIN.getValue().equals(loginUser.getUserRole())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        User user = new User();
+        BeanUtil.copyProperties(userUpdateRequest, user);
+        return this.updateById(user);
+    }
 
     @Override
+    public Page<UserVO> listUserVOByPage(UserQueryRequest userQueryRequest) {
+        // 参数校验
+        if (userQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        long pageNum = userQueryRequest.getPageNum();
+        long pageSize = userQueryRequest.getPageSize();
+        if (pageNum < 1 || pageSize < 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "分页参数错误");
+        }
+        QueryWrapper queryWrapper = getQueryWrapper(userQueryRequest);
+        Page<User> userPage = this.page(new Page<>(pageNum, pageSize), queryWrapper);
+        // 脱敏
+        Page<UserVO> userVOPage = new Page<>(pageNum, pageSize, userPage.getTotalRow());
+        userVOPage.setRecords(getUserVOList(userPage.getRecords()));
+        return userVOPage;
+    }
+
+    @Override
+    public long addUser(UserAddRequest userAddRequest) {
+        // 1. 参数校验
+        if (userAddRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        String userAccount = userAddRequest.getUserAccount();
+        if (StrUtil.isBlank(userAccount)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号不能为空");
+        }
+        if (userAccount.length() < 4) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
+        }
+        // 2. 转换对象
+        User user = new User();
+        BeanUtil.copyProperties(userAddRequest, user);
+        // 3. 设置默认密码
+        final String DEFAULT_PASSWORD = "12345678";
+        String encryptPassword = getEncryptPassword(DEFAULT_PASSWORD);
+        user.setUserPassword(encryptPassword);
+        // 4. 校验账号唯一性
+        QueryWrapper queryWrapper = new QueryWrapper();
+        queryWrapper.eq("user_account", user.getUserAccount());
+        long count = this.mapper.selectCountByQuery(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号已存在");
+        }
+        // 5. 保存用户
+        boolean result = this.save(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "创建用户失败");
+        }
+        return user.getId();
+    }
+
+    /**
+     * 构建分页查询 QueryWrapper
+     * @param userQueryRequest 分页查询数据
+     * @return QueryWrapper
+     */
     public QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest) {
         if (userQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
@@ -192,5 +261,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>  implements U
                 .orderBy(sortField, "ascend".equals(sortOrder));
     }
 
-
+    /**
+     * 重写父类方法，用于获取加密后的用户密码
+     * @param userPassword 用户输入的原始密码
+     * @return 返回经过MD5加密后的密码字符串
+     */
+    public String getEncryptPassword(String userPassword) {
+        // 盐值，混淆密码
+        final String SALT = "dorr";
+        return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+    }
 }

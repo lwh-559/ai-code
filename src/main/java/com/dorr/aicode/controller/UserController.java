@@ -1,6 +1,5 @@
 package com.dorr.aicode.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.dorr.aicode.annotation.AuthCheck;
 import com.dorr.aicode.common.BaseResponse;
 import com.dorr.aicode.common.DeleteRequest;
@@ -9,25 +8,18 @@ import com.dorr.aicode.constant.UserConstant;
 import com.dorr.aicode.exception.BusinessException;
 import com.dorr.aicode.exception.ErrorCode;
 import com.dorr.aicode.exception.ThrowUtils;
-import com.dorr.aicode.model.dto.*;
-import com.dorr.aicode.model.vo.LoginUserVO;
-import com.dorr.aicode.model.vo.UserVO;
+import com.dorr.aicode.model.dto.user.*;
+import com.dorr.aicode.model.entity.user.User;
+import com.dorr.aicode.model.vo.user.LoginUserVO;
+import com.dorr.aicode.model.vo.user.UserVO;
+import com.dorr.aicode.service.UserService;
 import com.mybatisflex.core.paginate.Page;
-import com.mybatisflex.core.query.QueryWrapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.dorr.aicode.model.entity.User;
-import com.dorr.aicode.service.UserService;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 用户 控制层。
@@ -36,6 +28,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/user")
+@Tag(name = "用户管理", description = "用户的注册、登录、CRUD 接口")
 public class UserController {
 
     @Resource
@@ -48,6 +41,7 @@ public class UserController {
      * @param request request
      * @return boolean
      */
+    @Operation(summary = "用户注销", description = "注销当前登录用户，需要登录")
     @PostMapping("/logout")
     public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
@@ -63,6 +57,7 @@ public class UserController {
      * @param request  request
      * @return BaseResponse<LoginUserVO>
      */
+    @Operation(summary = "获取当前登录用户", description = "获取当前登录用户的信息，需要登录")
     @GetMapping("/get/login")
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -76,6 +71,7 @@ public class UserController {
      * @param request request
      * @return 脱敏后的用户信息
      */
+    @Operation(summary = "用户登录", description = "用户账号密码登录")
     @PostMapping("/login")
     public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR);
@@ -92,6 +88,7 @@ public class UserController {
      * @param userRegisterRequest   用户注册信息
      * @return 新用户 id
      */
+    @Operation(summary = "用户注册", description = "新用户注册账号")
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         // 1、参数校验
@@ -104,37 +101,28 @@ public class UserController {
     }
 
     /**
-     * 创建用户
+     * 创建用户（仅管理员）
+     *
+     * @param userAddRequest 用户创建请求
+     * @return 新用户 id
      */
+    @Operation(summary = "管理员创建用户", description = "管理员创建新用户，需要管理员权限")
     @PostMapping("/add")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest) {
-        ThrowUtils.throwIf(userAddRequest == null, ErrorCode.PARAMS_ERROR);
-        User user = new User();
-        BeanUtil.copyProperties(userAddRequest, user);
-        // 默认密码 12345678
-        final String DEFAULT_PASSWORD = "12345678";
-        String encryptPassword = userService.getEncryptPassword(DEFAULT_PASSWORD);
-        user.setUserPassword(encryptPassword);
-
-        // 2、校验是否存在
-        QueryWrapper queryWrapper = new QueryWrapper();
-        queryWrapper.eq("user_account", user.getUserAccount());
-        long count = userService.count(queryWrapper);
-        if (count > 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号已存在");
-        }
-        boolean result = userService.save(user);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(user.getId());
+        long result = userService.addUser(userAddRequest);
+        return ResultUtils.success(result);
     }
 
     /**
      * 根据 id 获取用户（仅管理员）
      */
+    @Operation(summary = "管理员获取用户", description = "管理员根据 ID 获取用户详情，需要管理员权限")
     @GetMapping("/get")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<User> getUserById(long id) {
+    public BaseResponse<User> getUserById(
+            @Parameter(description = "用户 ID", required = true, example = "1")
+            long id) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         User user = userService.getById(id);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
@@ -144,8 +132,11 @@ public class UserController {
     /**
      * 根据 id 获取包装类
      */
+    @Operation(summary = "获取用户脱敏信息", description = "根据 ID 获取用户脱敏信息，无需登录")
     @GetMapping("/get/vo")
-    public BaseResponse<UserVO> getUserVOById(long id) {
+    public BaseResponse<UserVO> getUserVOById(
+            @Parameter(description = "用户 ID", required = true, example = "1")
+            long id) {
         BaseResponse<User> response = getUserById(id);
         User user = response.getData();
         return ResultUtils.success(userService.getUserVO(user));
@@ -154,6 +145,7 @@ public class UserController {
     /**
      * 删除用户
      */
+    @Operation(summary = "管理员删除用户", description = "管理员删除用户，需要管理员权限")
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest) {
@@ -166,37 +158,30 @@ public class UserController {
 
     /**
      * 更新用户
+     *
+     * @param userUpdateRequest 用户更新请求
+     * @param request           request
+     * @return 是否更新成功
      */
+    @Operation(summary = "更新用户信息", description = "用户更新自己的信息，需要登录")
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest) {
-        if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        User user = new User();
-        BeanUtil.copyProperties(userUpdateRequest, user);
-        boolean result = userService.updateById(user);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(true);
+    public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest,
+                                            HttpServletRequest request) {
+        boolean result = userService.updateUser(userUpdateRequest, request);
+        return ResultUtils.success(result);
     }
 
     /**
      * 分页获取用户封装列表（仅管理员）
      *
      * @param userQueryRequest 查询请求参数
+     * @return 分页脱敏用户列表
      */
+    @Operation(summary = "管理员分页查询用户", description = "管理员分页查询用户列表，需要管理员权限")
     @PostMapping("/list/page/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest) {
-        ThrowUtils.throwIf(userQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        long pageNum = userQueryRequest.getPageNum();
-        long pageSize = userQueryRequest.getPageSize();
-        Page<User> userPage = userService.page(Page.of(pageNum, pageSize),
-                userService.getQueryWrapper(userQueryRequest));
-        // 数据脱敏
-        Page<UserVO> userVOPage = new Page<>(pageNum, pageSize, userPage.getTotalRow());
-        List<UserVO> userVOList = userService.getUserVOList(userPage.getRecords());
-        userVOPage.setRecords(userVOList);
+        Page<UserVO> userVOPage = userService.listUserVOByPage(userQueryRequest);
         return ResultUtils.success(userVOPage);
     }
 

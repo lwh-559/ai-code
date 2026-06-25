@@ -1,14 +1,15 @@
 package com.dorr.aicode.service;
 
-import com.dorr.aicode.model.dto.UserQueryRequest;
-import com.dorr.aicode.model.vo.LoginUserVO;
-import com.dorr.aicode.model.vo.UserVO;
-import com.mybatisflex.core.query.QueryWrapper;
+import com.dorr.aicode.model.dto.user.UserAddRequest;
+import com.dorr.aicode.model.dto.user.UserQueryRequest;
+import com.dorr.aicode.model.dto.user.UserUpdateRequest;
+import com.dorr.aicode.model.vo.user.LoginUserVO;
+import com.dorr.aicode.model.vo.user.UserVO;
 import com.mybatisflex.core.service.IService;
-import com.dorr.aicode.model.entity.User;
+import com.mybatisflex.core.paginate.Page;
+import com.dorr.aicode.model.entity.user.User;
 import jakarta.servlet.http.HttpServletRequest;
 
-import java.util.List;
 
 /**
  * 用户 服务层。
@@ -26,13 +27,6 @@ public interface UserService extends IService<User> {
      * @return 新用户 id
      */
     long userRegister(String userAccount, String userPassword, String checkPassword);
-
-    /**
-     * 重写父类方法，用于获取加密后的用户密码
-     * @param userPassword 用户输入的原始密码
-     * @return 返回经过MD5加密后的密码字符串
-     */
-    String getEncryptPassword(String userPassword);
 
     /**
      * 获取脱敏的已登录用户信息
@@ -77,16 +71,27 @@ public interface UserService extends IService<User> {
     UserVO getUserVO(User user);
 
     /**
-     * 获取脱敏后的用户列表
-     * @param userList 用户实体列表
-     * @return 脱敏后数据列表
+     * 更新用户信息（仅管理员或本人可操作）
+     *
+     * @param userUpdateRequest 用户更新请求
+     * @param request           request
+     * @return 是否更新成功
      */
-    List<UserVO> getUserVOList(List<User> userList);
+    boolean updateUser(UserUpdateRequest userUpdateRequest, HttpServletRequest request);
 
     /**
-     * 构建分页查询 QueryWrapper
-     * @param userQueryRequest 分页查询数据
-     * @return QueryWrapper
+     * 分页获取用户脱敏列表
+     *
+     * @param userQueryRequest 分页查询请求
+     * @return 分页脱敏用户列表
      */
-    QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest);
+    Page<UserVO> listUserVOByPage(UserQueryRequest userQueryRequest);
+
+    /**
+     * 创建用户（仅管理员）
+     *
+     * @param userAddRequest 用户创建请求
+     * @return 新用户 id
+     */
+    long addUser(UserAddRequest userAddRequest);
 }

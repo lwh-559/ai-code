@@ -1,6 +1,7 @@
-package com.dorr.aicode.model.dto;
+package com.dorr.aicode.model.dto.user;
 
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serial;
@@ -12,6 +13,7 @@ import java.io.Serializable;
  * @description: 用户注册请求DTO
  */
 @Data
+@Schema(description = "用户注册请求")
 public class UserRegisterRequest implements Serializable {
 
     @Serial
@@ -20,15 +22,18 @@ public class UserRegisterRequest implements Serializable {
     /**
      * 账号
      */
+    @Schema(description = "用户账号", requiredMode = Schema.RequiredMode.REQUIRED, example = "zhangsan")
     private String userAccount;
 
     /**
      * 密码
      */
+    @Schema(description = "用户密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "123456")
     private String userPassword;
 
     /**
      * 确认密码
      */
+    @Schema(description = "确认密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "123456")
     private String checkPassword;
 }
