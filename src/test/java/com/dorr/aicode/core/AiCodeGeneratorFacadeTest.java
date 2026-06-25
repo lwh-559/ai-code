@@ -22,13 +22,14 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     void generateAndSaveCode() {
-        File file = aiCodeGeneratorFacade.generateAndSaveCode(userMsg, CodeGenTypeEnum.MULTI_FILE);
+        Long appId = 1L;
+        File file = aiCodeGeneratorFacade.generateAndSaveCode(userMsg, CodeGenTypeEnum.MULTI_FILE, appId);
         Assertions.assertNotNull(file);
     }
 
     @Test
     void generateAndSaveGHtmlCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(userMsg, CodeGenTypeEnum.HTML);
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(userMsg, CodeGenTypeEnum.HTML, 1L);
         // 阻塞等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         // 验证结果
@@ -39,7 +40,7 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     void generateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(userMsg, CodeGenTypeEnum.MULTI_FILE);
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(userMsg, CodeGenTypeEnum.MULTI_FILE, 1L);
         // 阻塞等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         // 验证结果

@@ -5,8 +5,10 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.dorr.aicode.ai.model.enums.CodeGenTypeEnum;
+import com.dorr.aicode.constant.AppConstant;
 import com.dorr.aicode.exception.BusinessException;
 import com.dorr.aicode.exception.ErrorCode;
+import com.dorr.aicode.exception.ThrowUtils;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -19,14 +21,15 @@ import java.nio.charset.StandardCharsets;
 
 public abstract class CodeFileSaverTemplate<T> {
 
-    // 文件保存根目录
-    private static final String FILE_SAVE_ROOT_DIR = System.getProperty("user.dir") + "/tmp/code_output";
+    // 应用生成根目录（用于浏览）
+    private static final String FILE_SAVE_ROOT_DIR = AppConstant.CODE_OUTPUT_ROOT_DIR;
 
-    public final File saveCode(T codeResult) {
+
+    public final File saveCode(T codeResult, Long appId) {
         // 1、验证输入
         validateInput(codeResult);
-        // 2、构建唯一目录
-        String basePath = buildUniqueDir();
+        // 2、构建基于 appId 的目录
+        String basePath = buildUniqueDir(appId);
         // 3、保存文件（具体实现由子类提供）
         saveFiles(codeResult, basePath);
         // 4、返回目录文件对象
@@ -45,11 +48,13 @@ public abstract class CodeFileSaverTemplate<T> {
 
     /**
      * 构建唯一目录路径：tmp/code_output/bizType_雪花ID
+     * @param appId 应用 id
      * @return 目录路径
      */
-    protected final String buildUniqueDir() {
+    protected final String buildUniqueDir(Long appId) {
+        ThrowUtils.throwIf(appId == null, ErrorCode.PARAMS_ERROR, "应用 id 不能为空");
         String codeType = getCodeType().getValue();
-        String uniqueDirName = StrUtil.format("{}_{}", codeType, IdUtil.getSnowflakeNextIdStr());
+        String uniqueDirName = StrUtil.format("{}_{}", codeType, appId);
         String dirPath = FILE_SAVE_ROOT_DIR + File.separator + uniqueDirName;
         FileUtil.mkdir(dirPath);
         return dirPath;
