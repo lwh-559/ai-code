@@ -9,7 +9,7 @@ import com.dorr.aicode.exception.BusinessException;
 import com.dorr.aicode.exception.ErrorCode;
 import com.dorr.aicode.exception.ThrowUtils;
 import com.dorr.aicode.model.dto.user.*;
-import com.dorr.aicode.model.entity.user.User;
+import com.dorr.aicode.model.entity.User;
 import com.dorr.aicode.model.vo.user.LoginUserVO;
 import com.dorr.aicode.model.vo.user.UserVO;
 import com.dorr.aicode.service.UserService;

@@ -7,7 +7,7 @@ import com.dorr.aicode.model.vo.user.LoginUserVO;
 import com.dorr.aicode.model.vo.user.UserVO;
 import com.mybatisflex.core.service.IService;
 import com.mybatisflex.core.paginate.Page;
-import com.dorr.aicode.model.entity.user.User;
+import com.dorr.aicode.model.entity.User;
 import jakarta.servlet.http.HttpServletRequest;
 
 

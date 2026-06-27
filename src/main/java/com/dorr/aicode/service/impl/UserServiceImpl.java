@@ -14,7 +14,7 @@ import com.dorr.aicode.model.vo.user.UserVO;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.dorr.aicode.model.entity.user.User;
+import com.dorr.aicode.model.entity.User;
 import com.dorr.aicode.mapper.UserMapper;
 import com.dorr.aicode.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;

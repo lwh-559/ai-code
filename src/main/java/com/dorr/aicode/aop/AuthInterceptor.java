@@ -4,7 +4,7 @@ package com.dorr.aicode.aop;
 import com.dorr.aicode.annotation.AuthCheck;
 import com.dorr.aicode.exception.BusinessException;
 import com.dorr.aicode.exception.ErrorCode;
-import com.dorr.aicode.model.entity.user.User;
+import com.dorr.aicode.model.entity.User;
 import com.dorr.aicode.model.enums.UserRoleEnum;
 import com.dorr.aicode.service.UserService;
 import jakarta.annotation.Resource;

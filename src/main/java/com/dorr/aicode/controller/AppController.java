@@ -2,6 +2,7 @@ package com.dorr.aicode.controller;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.dorr.aicode.ai.model.enums.CodeGenTypeEnum;
 import com.dorr.aicode.annotation.AuthCheck;
 import com.dorr.aicode.common.BaseResponse;
 import com.dorr.aicode.common.DeleteRequest;
@@ -10,7 +11,7 @@ import com.dorr.aicode.constant.UserConstant;
 import com.dorr.aicode.exception.ErrorCode;
 import com.dorr.aicode.exception.ThrowUtils;
 import com.dorr.aicode.model.dto.app.*;
-import com.dorr.aicode.model.entity.user.User;
+import com.dorr.aicode.model.entity.User;
 import com.dorr.aicode.model.vo.app.AppVO;
 import com.dorr.aicode.service.AppService;
 import com.dorr.aicode.service.UserService;
@@ -117,9 +118,10 @@ public class AppController {
      */
     @PostMapping("/add")
     @Operation(summary = "创建应用", description = "用户创建新的应用，需要登录")
-    public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
+    public BaseResponse<String> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
+        appAddRequest.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
         long appId = appService.addApp(appAddRequest, request);
-        return ResultUtils.success(appId);
+        return ResultUtils.success(String.valueOf(appId));
     }
 
     /**
@@ -175,7 +177,10 @@ public class AppController {
      */
     @PostMapping("/my/list")
     @Operation(summary = "分页查询我的应用", description = "分页查询当前登录用户创建的应用列表，需要登录")
-    public BaseResponse<Page<AppVO>> listMyAppByPage(@RequestBody AppQueryRequest appQueryRequest) {
+    public BaseResponse<Page<AppVO>> listMyAppByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        // 只查询用户自己的应用
+        appQueryRequest.setUserId(loginUser.getId());
         Page<AppVO> page = appService.listMyAppByPage(appQueryRequest);
         return ResultUtils.success(page);
     }

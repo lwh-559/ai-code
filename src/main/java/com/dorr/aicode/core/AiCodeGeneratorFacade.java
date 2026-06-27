@@ -2,6 +2,7 @@ package com.dorr.aicode.core;
 
 
 import com.dorr.aicode.ai.AiCodeGeneratorService;
+import com.dorr.aicode.ai.AiCodeGeneratorServiceFactory;
 import com.dorr.aicode.ai.model.HtmlCodeResult;
 import com.dorr.aicode.ai.model.MultiFileCodeResult;
 import com.dorr.aicode.ai.model.enums.CodeGenTypeEnum;
@@ -26,7 +27,7 @@ import java.io.File;
 public class AiCodeGeneratorFacade {
 
     @Resource
-    private AiCodeGeneratorService aiCodeGeneratorService;
+    private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
     /**
      * 统一入口：根据类型生成并保存代码
@@ -40,6 +41,9 @@ public class AiCodeGeneratorFacade {
         if (codeGenTypeEnum == null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"代码生成类型不能为空");
         }
+
+        // 根据 appId 获取对应的 AI 服务实例
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
 
         return switch (codeGenTypeEnum) {
             case HTML -> {
@@ -65,6 +69,10 @@ public class AiCodeGeneratorFacade {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
         }
+
+        // 根据 appId 获取对应的 AI 服务实例
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+
         return switch (codeGenTypeEnum) {
             case HTML -> {
                 Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
