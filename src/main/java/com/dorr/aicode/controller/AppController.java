@@ -119,7 +119,7 @@ public class AppController {
     @PostMapping("/add")
     @Operation(summary = "创建应用", description = "用户创建新的应用，需要登录")
     public BaseResponse<String> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
-        appAddRequest.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
+        appAddRequest.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
         long appId = appService.addApp(appAddRequest, request);
         return ResultUtils.success(String.valueOf(appId));
     }
