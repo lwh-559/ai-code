@@ -21,6 +21,11 @@ spring:
     store-type: redis
     # session 30 天过期
     timeout: 2592000
+  # HTTP客户端连接超时
+  web:
+    client:
+      connection-timeout: 300,000   # 5分钟
+      read-timeout: 300,000         # 5分钟
 # mybatis-flex配置
 mybatis-flex:
   mapper-locations: classpath*:mapper/*.xml
@@ -47,6 +52,7 @@ langchain4j:
       api-key: <Your API Key>
       model-name: deepseek-chat
       max-tokens: 8192
+      timeout: PT5M
       log-requests: true
       log-responses: true
 
@@ -68,3 +74,15 @@ logging:
     org.springframework.web: debug
     # MyBatis SQL 日志
     com.dorr.aicode.mapper: debug
+
+# 添加 oss 对象存储配置
+aliyun:
+  oss:
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    access-key-id: 你的AccessKeyID
+    access-key-secret: 你的AccessKeySecret
+    bucket-name: 你的Bucket名称
+    # 文件外网访问域名
+    domain: https://你的Bucket名称.oss-cn-hangzhou.aliyuncs.com
+    # 如果是新Bucket需要开启V4签名，配置region
+    region: cn-hangzhou

@@ -2,7 +2,6 @@ package com.dorr.aicode.controller;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import com.dorr.aicode.ai.model.enums.CodeGenTypeEnum;
 import com.dorr.aicode.annotation.AuthCheck;
 import com.dorr.aicode.common.BaseResponse;
 import com.dorr.aicode.common.DeleteRequest;
@@ -21,6 +20,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -108,6 +108,24 @@ public class AppController {
         return ResultUtils.success(deployUrl);
     }
 
+    /**
+     * 下载应用代码
+     *
+     * @param appId    应用ID
+     * @param request  请求
+     * @param response 响应
+     */
+    @GetMapping("/download/{appId}")
+    @Operation(summary = "下载应用代码", description = "根据 AppId 下载应用代码")
+    public void downloadAppCode(
+            @PathVariable
+            @Parameter(description = "应用 ID", required = true, example = "1")
+            Long appId,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        appService.downloadAppCode(appId, request, response);
+    }
+
 
     /**
      * 创建应用
@@ -119,8 +137,9 @@ public class AppController {
     @PostMapping("/add")
     @Operation(summary = "创建应用", description = "用户创建新的应用，需要登录")
     public BaseResponse<String> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
-        appAddRequest.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-        long appId = appService.addApp(appAddRequest, request);
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        long appId = appService.addApp(appAddRequest, loginUser);
         return ResultUtils.success(String.valueOf(appId));
     }
 
@@ -134,7 +153,9 @@ public class AppController {
     @PostMapping("/update")
     @Operation(summary = "更新应用", description = "用户更新自己创建的应用，需要登录")
     public BaseResponse<Boolean> updateApp(@RequestBody AppUpdateRequest appUpdateRequest, HttpServletRequest request) {
-        boolean result = appService.updateApp(appUpdateRequest, request);
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        boolean result = appService.updateApp(appUpdateRequest, loginUser);
         return ResultUtils.success(result);
     }
 
@@ -150,7 +171,9 @@ public class AppController {
     public BaseResponse<Boolean> deleteApp(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         // 参数校验
         ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() <= 0, ErrorCode.PARAMS_ERROR, "应用 id 不合法");
-        boolean result = appService.deleteApp(deleteRequest.getId(), request);
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        boolean result = appService.deleteApp(deleteRequest.getId(), loginUser);
         return ResultUtils.success(result);
     }
 

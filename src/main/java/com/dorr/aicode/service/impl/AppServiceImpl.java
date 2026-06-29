@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.dorr.aicode.ai.AiCodeGenTypeRoutingService;
 import com.dorr.aicode.ai.model.enums.CodeGenTypeEnum;
 import com.dorr.aicode.constant.AppConstant;
 import com.dorr.aicode.core.AiCodeGeneratorFacade;
@@ -23,14 +24,13 @@ import com.dorr.aicode.model.entity.User;
 import com.dorr.aicode.model.enums.ChatHistoryMessageTypeEnum;
 import com.dorr.aicode.model.vo.app.AppVO;
 import com.dorr.aicode.model.vo.user.UserVO;
-import com.dorr.aicode.service.AppService;
-import com.dorr.aicode.service.ChatHistoryService;
-import com.dorr.aicode.service.UserService;
+import com.dorr.aicode.service.*;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -66,6 +66,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+
+    @Resource
+    private ScreenshotService screenshotService;
+
+    @Resource
+    private ProjectDownloadService projectDownloadService;
+
+    @Resource
+    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -147,22 +156,50 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         updateApp.setDeployedTime(LocalDateTime.now());
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-        // 10. 返回可访问的 URL
-        return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 10. 构建应用访问 URL
+        String appDeployUrl = String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 11. 异步生成截图并更新应用封面
+        generateAppScreenshotAsync(appId, appDeployUrl);
+        return appDeployUrl;
     }
 
 
     @Override
-    public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {
+    public void downloadAppCode(Long appId, HttpServletRequest request, HttpServletResponse response) {
+        // 1. 基础校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        // 2. 查询应用信息
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3. 权限校验：只有应用创建者可以下载代码
+        User loginUser = userService.getLoginUser(request);
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限下载该应用代码");
+        }
+        // 4. 构建应用代码目录路径（生成目录，非部署目录）
+        String codeGenType = app.getCodeGenType();
+        String sourceDirName = codeGenType + "_" + appId;
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
+        // 5. 检查代码目录是否存在
+        File sourceDir = new File(sourceDirPath);
+        ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(),
+                ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成代码");
+        // 6. 生成下载文件名（不建议添加中文内容）
+        String downloadFileName = String.valueOf(appId);
+        // 7. 调用通用下载服务
+        projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
+    }
+
+
+
+    @Override
+    public long addApp(AppAddRequest appAddRequest, User loginUser) {
         // 参数校验
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
 //        String appName = appAddRequest.getAppName();
         String initPrompt = appAddRequest.getInitPrompt();
 //        ThrowUtils.throwIf(StrUtil.isBlank(appName), ErrorCode.PARAMS_ERROR, "应用名称不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化 prompt 不能为空");
-
-        // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 构建应用对象
         App app = new App();
@@ -173,22 +210,24 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         // 设置默认优先级
         app.setPriority(AppConstant.DEFAULT_APP_PRIORITY);
+
+        // 使用 AI 智能选择代码生成类型
+        CodeGenTypeEnum codeGenTypeEnum = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        app.setCodeGenType(codeGenTypeEnum.getValue());
+
         // 保存应用
         boolean saveResult = this.save(app);
         ThrowUtils.throwIf(!saveResult, ErrorCode.OPERATION_ERROR, "创建应用失败");
-
+        log.info("应用创建成功，ID：{}，类型：{}",app.getId(), app.getCodeGenType());
         return app.getId();
     }
 
     @Override
-    public boolean updateApp(AppUpdateRequest appUpdateRequest, HttpServletRequest request) {
+    public boolean updateApp(AppUpdateRequest appUpdateRequest, User loginUser) {
         // 参数校验
         ThrowUtils.throwIf(appUpdateRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = appUpdateRequest.getId();
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR, "应用 id 不能为空");
-
-        // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 查询应用是否存在
         App app = this.getById(id);
@@ -212,12 +251,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public boolean deleteApp(long id, HttpServletRequest request) {
+    public boolean deleteApp(long id, User loginUser) {
         // 参数校验
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR, "应用 id 不合法");
-
-        // 获取当前登录用户
-        User loginUser = userService.getLoginUser(request);
 
         // 查询应用是否存在
         App app = this.getById(id);
@@ -428,6 +464,26 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 .eq("priority", appQueryRequest.getPriority(), appQueryRequest.getPriority() != null)
                 .eq("user_id", appQueryRequest.getUserId())
                 .orderBy(sortField, "ascend".equals(sortOrder));
+    }
+
+    /**
+     * 异步生成应用截图并更新封面
+     *
+     * @param appId  应用ID
+     * @param appUrl 应用访问URL
+     */
+    public void generateAppScreenshotAsync(Long appId, String appUrl) {
+        // 使用虚拟线程异步执行
+        Thread.startVirtualThread(() -> {
+            // 调用截图服务生成截图并上传
+            String screenshotUrl = screenshotService.generateAndUploadScreenshot(appUrl);
+            // 更新应用封面字段
+            App updateApp = new App();
+            updateApp.setId(appId);
+            updateApp.setCover(screenshotUrl);
+            boolean updated = this.updateById(updateApp);
+            ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "更新应用封面字段失败");
+        });
     }
 
 

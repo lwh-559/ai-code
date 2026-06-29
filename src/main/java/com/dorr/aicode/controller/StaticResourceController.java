@@ -18,9 +18,9 @@ import org.springframework.web.servlet.HandlerMapping;
 
 import java.io.File;
 
-@Tag(name = "静态资源", description = "静态资源访问接口，用于预览已部署的应用页面")
 @RestController
 @RequestMapping("/static")
+@Tag(name = "静态资源", description = "静态资源访问接口，用于预览已部署的应用页面")
 public class StaticResourceController {
 
     /**

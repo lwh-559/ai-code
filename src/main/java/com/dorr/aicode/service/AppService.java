@@ -10,6 +10,7 @@ import com.dorr.aicode.model.vo.app.AppVO;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import reactor.core.publisher.Flux;
 
 /**
@@ -39,31 +40,40 @@ public interface AppService extends IService<App> {
     String deployApp(Long appId, User loginUser);
 
     /**
+     * 下载应用代码
+     *
+     * @param appId 应用ID
+     * @param request 下载请求
+     * @param response 下载响应
+     */
+    void downloadAppCode(Long appId, HttpServletRequest request, HttpServletResponse response);
+
+    /**
      * 创建应用
      *
      * @param appAddRequest 创建应用请求
-     * @param request       request
+     * @param loginUser     登录用户
      * @return 新应用 id
      */
-    long addApp(AppAddRequest appAddRequest, HttpServletRequest request);
+    long addApp(AppAddRequest appAddRequest, User loginUser);
 
     /**
      * 用户更新自己的应用
      *
      * @param appUpdateRequest 更新应用请求
-     * @param request          request
+     * @param loginUser     登录用户
      * @return 是否更新成功
      */
-    boolean updateApp(AppUpdateRequest appUpdateRequest, HttpServletRequest request);
+    boolean updateApp(AppUpdateRequest appUpdateRequest, User loginUser);
 
     /**
      * 用户删除自己的应用
      *
-     * @param id      应用 id
-     * @param request request
+     * @param id            应用 id
+     * @param loginUser     登录用户
      * @return 是否删除成功
      */
-    boolean deleteApp(long id, HttpServletRequest request);
+    boolean deleteApp(long id, User loginUser);
 
     /**
      * 获取应用详情
