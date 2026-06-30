@@ -33,7 +33,7 @@ public class ReasoningStreamingChatModelConfig {
     public StreamingChatModel reasoningStreamingChatModel() {
 
         // 测试环境
-        String modelName = "glm-4.5-air";
+        String modelName = "deepseek-reasoner";
         // 生产环境
 //        String modelName = "glm-4.7";
         return OpenAiStreamingChatModel.builder()

@@ -2,7 +2,7 @@ package com.dorr.aicode.ai;
 
 
 import com.dorr.aicode.ai.model.enums.CodeGenTypeEnum;
-import com.dorr.aicode.ai.tools.FileWriteTool;
+import com.dorr.aicode.ai.tools.ToolManager;
 import com.dorr.aicode.exception.BusinessException;
 import com.dorr.aicode.exception.ErrorCode;
 import com.dorr.aicode.service.ChatHistoryService;
@@ -44,6 +44,9 @@ public class AiCodeGeneratorServiceFactory {
 
     @Resource
     private ChatHistoryService chatHistoryService;
+
+    @Resource
+    private ToolManager toolManager;
 
     @Bean
     public AiCodeGeneratorService aiCodeGeneratorService() {
@@ -122,7 +125,7 @@ public class AiCodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(new FileWriteTool())
+                    .tools(toolManager.getAllTools())
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest,  "Error: there is no tool called " + toolExecutionRequest.name()))
                     .build();
             // HTML、多文件生成使用默认模型
