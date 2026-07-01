@@ -1,0 +1,26 @@
+package com.dorr.aicode.langgraph4j.ai;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.AiServices;
+import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * @author: lwh
+ * @date: 2026-07-01
+ * @description: 图片收集任务服务 工厂类
+ */
+@Configuration
+public class ImageCollectionPlanServiceFactory {
+
+    @Resource
+    private ChatModel chatModel;
+
+    @Bean
+    public ImageCollectionPlanService createImageCollectionPlanService() {
+        return AiServices.builder(ImageCollectionPlanService.class)
+                .chatModel(chatModel)
+                .build();
+    }
+}
